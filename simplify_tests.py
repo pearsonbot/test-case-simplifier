@@ -201,12 +201,19 @@ def main(input_path: str, output_path: str, has_header: bool):
     print(f"输出文件: {output_path}")
 
 
+DEFAULT_INPUT_PATH = "input.xlsx"
+DEFAULT_OUTPUT_PATH = "output.xlsx"
+
 if __name__ == "__main__":
     args = sys.argv[1:]
-    if len(args) < 2:
-        print(__doc__)
-        sys.exit(0)
-
     has_header = "--header" in args
     paths = [a for a in args if not a.startswith("--")]
-    main(paths[0], paths[1], has_header)
+
+    if len(paths) >= 2:
+        input_path, output_path = paths[0], paths[1]
+    elif len(paths) == 1:
+        input_path, output_path = paths[0], DEFAULT_OUTPUT_PATH
+    else:
+        input_path, output_path = DEFAULT_INPUT_PATH, DEFAULT_OUTPUT_PATH
+
+    main(input_path, output_path, has_header)
