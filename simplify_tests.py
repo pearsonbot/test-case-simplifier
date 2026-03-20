@@ -1,11 +1,12 @@
 """
 测试用例精简工具
-用法: python3 simplify_tests.py input.xlsx output.xlsx [--header]
+用法: python3 simplify_tests.py [--header]
 
 参数:
-  input.xlsx   输入文件（三列：列1, 用例名称A_B(C), 列3）
-  output.xlsx  输出文件
-  --header     若原始文件有表头行，加此参数跳过第一行
+  --header  若原始文件有表头行，加此参数跳过第一行
+
+输入文件: 脚本同目录下的 input.xlsx（三列：列1, 用例名称A_B(C), 列3）
+输出文件: 脚本同目录下的 output.xlsx
 """
 
 import sys
@@ -201,19 +202,12 @@ def main(input_path: str, output_path: str, has_header: bool):
     print(f"输出文件: {output_path}")
 
 
-DEFAULT_INPUT_PATH = "input.xlsx"
-DEFAULT_OUTPUT_PATH = "output.xlsx"
+import os
+
+_DIR = os.path.dirname(os.path.abspath(__file__))
+INPUT_PATH = os.path.join(_DIR, "input.xlsx")
+OUTPUT_PATH = os.path.join(_DIR, "output.xlsx")
 
 if __name__ == "__main__":
-    args = sys.argv[1:]
-    has_header = "--header" in args
-    paths = [a for a in args if not a.startswith("--")]
-
-    if len(paths) >= 2:
-        input_path, output_path = paths[0], paths[1]
-    elif len(paths) == 1:
-        input_path, output_path = paths[0], DEFAULT_OUTPUT_PATH
-    else:
-        input_path, output_path = DEFAULT_INPUT_PATH, DEFAULT_OUTPUT_PATH
-
-    main(input_path, output_path, has_header)
+    has_header = "--header" in sys.argv
+    main(INPUT_PATH, OUTPUT_PATH, has_header)
