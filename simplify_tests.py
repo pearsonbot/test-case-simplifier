@@ -172,9 +172,10 @@ def main(input_path: str, output_path: str, has_header: bool):
     with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
         for c_val, c_group in sorted(df.groupby("C")):
             result = select_orthogonal(c_group)
+            kept_indices = result.index  # 保存原始索引，reset_index 之前
             result = result.sort_values("A").reset_index(drop=True)
 
-            removed = c_group[~c_group.index.isin(result.index)].sort_values("A")
+            removed = c_group[~c_group.index.isin(kept_indices)].sort_values("A")
 
             kept_out = result[["col1", "name", "A", "B", "col3"]].copy()
             removed_out = removed[["col1", "name", "A", "B", "col3"]].copy()
