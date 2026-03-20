@@ -90,6 +90,8 @@ _B_COLORS = [
 _HEADER_FILL = PatternFill("solid", fgColor="4472C4")
 _HEADER_FONT = Font(color="FFFFFF", bold=True)
 _SUMMARY_FILL = PatternFill("solid", fgColor="D9E1F2")
+_REMOVED_FILL = PatternFill("solid", fgColor="D9D9D9")
+_REMOVED_FONT = Font(color="808080", strikethrough=True)
 
 
 def _sanitize_sheet_name(name: str) -> str:
@@ -97,7 +99,7 @@ def _sanitize_sheet_name(name: str) -> str:
     return re.sub(r'[\\/:*?"<>|\[\]]', "_", str(name))[:31]
 
 
-def _format_sheet(ws, b_color_map: dict, is_summary: bool):
+def _format_sheet(ws, b_color_map: dict, is_summary: bool, kept_count: int = 0):
     # 表头样式
     for cell in ws[1]:
         cell.fill = _HEADER_FILL
@@ -108,8 +110,14 @@ def _format_sheet(ws, b_color_map: dict, is_summary: bool):
     if not is_summary:
         headers = [ws.cell(1, c).value for c in range(1, ws.max_column + 1)]
         b_col_idx = headers.index("B") + 1 if "B" in headers else None
-        for row in ws.iter_rows(min_row=2):
-            if b_col_idx:
+        for i, row in enumerate(ws.iter_rows(min_row=2)):
+            row_data_idx = i  # 0-based，0 = 第一条数据行
+            if row_data_idx >= kept_count:
+                # 被优化掉的行：灰色背景 + 删除线
+                for cell in row:
+                    cell.fill = _REMOVED_FILL
+                    cell.font = _REMOVED_FONT
+            elif b_col_idx:
                 b_val = row[b_col_idx - 1].value
                 color = b_color_map.get(str(b_val) if b_val else "")
                 if color:
@@ -160,16 +168,22 @@ def main(input_path: str, output_path: str, has_header: bool):
 
     # 写入 Excel
     summary_rows = []
+    sheet_kept_count = {}
     with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
         for c_val, c_group in sorted(df.groupby("C")):
             result = select_orthogonal(c_group)
             result = result.sort_values("A").reset_index(drop=True)
 
-            out = result[["col1", "name", "A", "B", "col3"]].copy()
+            removed = c_group[~c_group.index.isin(result.index)].sort_values("A")
+
+            kept_out = result[["col1", "name", "A", "B", "col3"]].copy()
+            removed_out = removed[["col1", "name", "A", "B", "col3"]].copy()
+            out = pd.concat([kept_out, removed_out], ignore_index=True)
             out.columns = ["列1", "用例名称", "A", "B", "列3"]
 
             sheet_name = _sanitize_sheet_name(c_val)
             out.to_excel(writer, sheet_name=sheet_name, index=False)
+            sheet_kept_count[sheet_name] = len(result)
 
             summary_rows.append({
                 "C（分组）": c_val,
@@ -190,7 +204,8 @@ def main(input_path: str, output_path: str, has_header: bool):
 
     # 格式化所有 sheet
     for sheet_name in wb.sheetnames:
-        _format_sheet(wb[sheet_name], b_color_map, is_summary=(sheet_name == "汇总"))
+        kept = sheet_kept_count.get(sheet_name, 0)
+        _format_sheet(wb[sheet_name], b_color_map, is_summary=(sheet_name == "汇总"), kept_count=kept)
 
     wb.save(output_path)
 
